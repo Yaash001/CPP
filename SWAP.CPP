@@ -11,7 +11,7 @@ void swap(int *a,int *b)
 
 void swap(float *a,float *b)
 {
-  int t;
+  float t;
   t=*a;
   *a=*b;
   *b=t;
