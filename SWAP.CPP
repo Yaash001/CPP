@@ -19,7 +19,7 @@ void swap(float *a,float *b)
 
 void swap(char *a,char *b)
 {
-  int t;
+  char t;
   t=*a;
   *a=*b;
   *b=t;
