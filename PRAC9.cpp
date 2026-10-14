@@ -1,97 +1,198 @@
-
 #include <iostream.h>
 #include <conio.h>
 #include <graphics.h>
-#include <math.h>
+#include <stdlib.h>
 
-void main()
+#define LEFT   1
+#define RIGHT  2
+#define BOTTOM 4
+#define TOP    8
+
+int xmin, ymin, xmax, ymax;
+
+// Calculate region code for a point
+int getCode(float x, float y)
+{
+    int code = 0;
+
+    if (x < xmin)
+        code = code | LEFT;
+    else if (x > xmax)
+        code = code | RIGHT;
+
+    if (y < ymin)
+        code = code | TOP;
+    else if (y > ymax)
+        code = code | BOTTOM;
+
+    return code;
+}
+
+// Cohen-Sutherland line clipping
+int clipLine(float *x1, float *y1,
+             float *x2, float *y2)
+{
+    int code1, code2, codeOut;
+    float x, y;
+
+    code1 = getCode(*x1, *y1);
+    code2 = getCode(*x2, *y2);
+
+    while (1)
+    {
+        // Both endpoints are inside
+        if ((code1 | code2) == 0)
+            return 1;
+
+        // Both endpoints are outside
+        // in the same region
+        if ((code1 & code2) != 0)
+            return 0;
+
+        // Select an endpoint outside the window
+        if (code1 != 0)
+            codeOut = code1;
+        else
+            codeOut = code2;
+
+        // Find intersection with TOP edge
+        if (codeOut & TOP)
+        {
+            if (*y2 == *y1)
+                return 0;
+
+            x = *x1 + (*x2 - *x1) *
+                (ymin - *y1) / (*y2 - *y1);
+            y = ymin;
+        }
+        // Find intersection with BOTTOM edge
+        else if (codeOut & BOTTOM)
+        {
+            if (*y2 == *y1)
+                return 0;
+
+            x = *x1 + (*x2 - *x1) *
+                (ymax - *y1) / (*y2 - *y1);
+            y = ymax;
+        }
+        // Find intersection with RIGHT edge
+        else if (codeOut & RIGHT)
+        {
+            if (*x2 == *x1)
+                return 0;
+
+            y = *y1 + (*y2 - *y1) *
+                (xmax - *x1) / (*x2 - *x1);
+            x = xmax;
+        }
+        // Find intersection with LEFT edge
+        else
+        {
+            if (*x2 == *x1)
+                return 0;
+
+            y = *y1 + (*y2 - *y1) *
+                (xmin - *x1) / (*x2 - *x1);
+            x = xmin;
+        }
+
+        // Replace the outside endpoint
+        if (codeOut == code1)
+        {
+            *x1 = x;
+            *y1 = y;
+            code1 = getCode(*x1, *y1);
+        }
+        else
+        {
+            *x2 = x;
+            *y2 = y;
+            code2 = getCode(*x2, *y2);
+        }
+    }
+}
+
+int main()
 {
     int gd = DETECT, gm;
-    int x1=100, y1=100, x2=150, y2=100, x3=125, y3=150;
-    int x, y, i;
-    float a, b, c, d, sh;
+    float x1, y1, x2, y2;
+    float cx1, cy1, cx2, cy2;
+    int result;
 
-    initgraph(&gd, &gm, NULL);
+    clrscr();
 
-    cout << "Original Triangle\n";
-    line(x1,y1,x2,y2);
-    line(x2,y2,x3,y3);
-    line(x3,y3,x1,y1);
+    cout << "COHEN-SUTHERLAND LINE CLIPPING\n\n";
 
-    cout << "\n1. Translation";
-    cout << "\n2. Scaling";
-    cout << "\n3. Rotation";
-    cout << "\n4. Reflection";
-    cout << "\n5. Shearing";
-    cout << "\nEnter choice: ";
-    cin >> i;
+    cout << "Enter clipping window xmin ymin: ";
+    cin >> xmin >> ymin;
 
-    switch(i)
+    cout << "Enter clipping window xmax ymax: ";
+    cin >> xmax >> ymax;
+
+    if (xmin >= xmax || ymin >= ymax)
     {
-        case 1:
-            cout << "Enter tx and ty: ";
-            cin >> a >> b;
-            x1+=a; y1+=b;
-            x2+=a; y2+=b;
-            x3+=a; y3+=b;
-            break;
-
-        case 2:
-            cout << "Enter sx and sy: ";
-            cin >> a >> b;
-            x1*=a; y1*=b;
-            x2*=a; y2*=b;
-            x3*=a; y3*=b;
-            break;
-
-        case 3:
-            cout << "Enter angle: ";
-            cin >> a;
-            b = a * 3.14159 / 180;
-            x = x1; y = y1;
-            x1 = x*cos(b)-y*sin(b);
-            y1 = x*sin(b)+y*cos(b);
-            x = x2; y = y2;
-            x2 = x*cos(b)-y*sin(b);
-            y2 = x*sin(b)+y*cos(b);
-            x = x3; y = y3;
-            x3 = x*cos(b)-y*sin(b);
-            y3 = x*sin(b)+y*cos(b);
-            break;
-
-        case 4:
-            cout << "1. X-axis  2. Y-axis: ";
-            cin >> c;
-            if(c==1)
-            {
-                y1=480-y1; y2=480-y2; y3=480-y3;
-            }
-            else
-            {
-                x1=640-x1; x2=640-x2; x3=640-x3;
-            }
-            break;
-
-        case 5:
-            cout << "Enter shear factor: ";
-            cin >> sh;
-            x1=x1+sh*y1;
-            x2=x2+sh*y2;
-            x3=x3+sh*y3;
-            break;
-
-        default:
-            cout << "Invalid choice";
-            getch();
-            closegraph();
-            return;
+        cout << "\nInvalid clipping window!";
+        getch();
+        return 0;
     }
 
+    cout << "\nEnter line starting point x1 y1: ";
+    cin >> x1 >> y1;
+
+    cout << "Enter line ending point x2 y2: ";
+    cin >> x2 >> y2;
+
+    // Save original endpoints
+    cx1 = x1;
+    cy1 = y1;
+    cx2 = x2;
+    cy2 = y2;
+
+    // Clip the line
+    result = clipLine(&cx1, &cy1, &cx2, &cy2);
+
+    initgraph(&gd, &gm, "C:\\TC\\BGI");
+
+    // Draw clipping window in white
+    rectangle(xmin, ymin, xmax, ymax);
+
+    // Draw original line in red
     setcolor(RED);
-    line(x1,y1,x2,y2);
-    line(x2,y2,x3,y3);
-    line(x3,y3,x1,y1);
+    line((int)x1, (int)y1, (int)x2, (int)y2);
+
+    if (result == 1)
+    {
+        // Draw clipped line in green
+        setcolor(GREEN);
+        line((int)cx1, (int)cy1,
+             (int)cx2, (int)cy2);
+
+        if (cx1 == x1 && cy1 == y1 &&
+            cx2 == x2 && cy2 == y2)
+        {
+            cout << "\nLine is completely visible.";
+        }
+        else
+        {
+            cout << "\nLine is partially visible.";
+        }
+
+        cout << "\nClipped endpoints: ";
+        cout << "(" << cx1 << ", " << cy1 << ")";
+        cout << " to ";
+        cout << "(" << cx2 << ", " << cy2 << ")";
+    }
+    else
+    {
+        cout << "\nLine is completely invisible.";
+    }
+
+    cout << "\n\nRED = Original line";
+    cout << "\nGREEN = Clipped line";
+    cout << "\nPress any key to exit.";
 
     getch();
     closegraph();
+
+    return 0;
 }
